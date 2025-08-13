@@ -47,13 +47,15 @@ means.append(
 df = pd.DataFrame.from_dict(scores)
 df = pd.melt(df,var_name='Models', value_name='Bias')
 
+#%%
+human_score = np.concatenate((human_score, human_score, human_score, human_score), axis=0)
 # %%
 ticksize = 30
 labelsize = 30
 fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
 sns.set_context('talk')
-ax_ = sns.stripplot(x='Models', y='Bias', data=df, ax=ax, size=2, legend=None)
+ax_ = sns.stripplot(x='Models', y='Bias', data=df, ax=ax, size=2, color='b', legend=None, hue=human_score)
 
 ax.scatter(
     x=np.arange(len(means)),  # positions for each category
