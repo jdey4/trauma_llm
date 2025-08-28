@@ -11,10 +11,18 @@ import matplotlib.gridspec as gridspec
 import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 # %%
-files = ['gemini_text-gemini-embedding-001.pickle',
-         'nomic_text-nomic-embed-text-v1.pickle',
+files = ['gemini_text-gemini-embedding-001_dim_768.pickle',
+         'gemini_text-gemini-embedding-001_dim_1536.pickle',
+         'gemini_text-gemini-embedding-001_dim_3072.pickle',
+         'nomic_text-nomic-embed-text-v1.5_64.pickle',
+         'nomic_text-nomic-embed-text-v1.5_256.pickle',
+         'nomic_text-nomic-embed-text-v1.5_512.pickle',
+         'nomic_text-nomic-embed-text-v1.5_768.pickle',
+         'openai_text-embedding-3-small.pickle',
          'openai_text-embedding-3-large.pickle']
-models = ['gemini', 'nomic', 'openai']
+models = ['gemini (768)', 'gemini (1536)', 'gemini (3072)',
+          'nomic (64)', 'nomic (256)', 'nomic (512)', 'nomic (768)',
+          'openai (1536)', 'openai (3072)']
 cosine_similarity = []
 
 for file in files:
@@ -77,7 +85,7 @@ for xi, cat in enumerate(categories):
             col_data[bi, 0] = np.mean(bin_vals)
 
 # Create the figure
-fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+fig, ax = plt.subplots(1, 1, figsize=(16, 8))
 sns.set_context('talk')
 
 # Draw heatmap behind the stripplot
@@ -111,10 +119,10 @@ ax.scatter(
 )
 
 # Formatting
-ax.hlines(0, 0, 3, linestyles='--', colors='k')
+ax.hlines(0, 0, 9, linestyles='--', colors='k')
 ax_.set_ylabel('Bias', fontsize=labelsize)
 ax_.set_xlabel('', fontsize=labelsize)
-ax_.set_xticklabels(categories, fontsize=labelsize, rotation=45)
+ax_.set_xticklabels(categories, fontsize=labelsize, rotation=80)
 ax_.set_yticks([-.4, 0, .6])
 ax_.tick_params(labelsize=ticksize)
 ax_.spines["right"].set_visible(False)
