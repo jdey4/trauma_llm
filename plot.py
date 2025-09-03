@@ -26,7 +26,7 @@ models = ['gemini (768)', 'gemini (1536)', 'gemini (3072)',
 cosine_similarity = []
 
 for file in files:
-    with open(file, 'rb') as f:
+    with open('biosses/'+file, 'rb') as f:
         data = pickle.load(f)
 
     cosine_similarity.append(
@@ -132,6 +132,6 @@ ax_.spines["top"].set_visible(False)
 cbar = plt.colorbar(im, ax=ax)
 cbar.set_label('Human Score')
 
-plt.savefig('plots/embedding_bias_with_heatmap.pdf')
+plt.savefig('plots/embedding_bias_with_heatmap_biosses.pdf')
 
 # %%
