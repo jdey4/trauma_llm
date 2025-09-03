@@ -113,7 +113,7 @@ ax.scatter(
     y=means,
     color="red",
     marker="D",
-    s=70,
+    s=140,
     zorder=3,
     label="Mean"
 )
