@@ -11,18 +11,21 @@ import matplotlib.gridspec as gridspec
 import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 # %%
-files = ['gemini_text-gemini-embedding-001_dim_768.pickle',
-         'gemini_text-gemini-embedding-001_dim_1536.pickle',
-         'gemini_text-gemini-embedding-001_dim_3072.pickle',
-         'nomic_text-nomic-embed-text-v1.5_64.pickle',
-         'nomic_text-nomic-embed-text-v1.5_256.pickle',
-         'nomic_text-nomic-embed-text-v1.5_512.pickle',
+# files = ['gemini_text-gemini-embedding-001_dim_768.pickle',
+#          'gemini_text-gemini-embedding-001_dim_1536.pickle',
+#          'gemini_text-gemini-embedding-001_dim_3072.pickle',
+#          'nomic_text-nomic-embed-text-v1.5_64.pickle',
+#          'nomic_text-nomic-embed-text-v1.5_256.pickle',
+#          'nomic_text-nomic-embed-text-v1.5_512.pickle',
+#          'nomic_text-nomic-embed-text-v1.5_768.pickle',
+#          'openai_text-embedding-3-small.pickle',
+#          'openai_text-embedding-3-large.pickle']
+
+files = ['gemini_text-gemini-embedding-001_dim_3072.pickle',
          'nomic_text-nomic-embed-text-v1.5_768.pickle',
-         'openai_text-embedding-3-small.pickle',
          'openai_text-embedding-3-large.pickle']
-models = ['gemini (768)', 'gemini (1536)', 'gemini (3072)',
-          'nomic (64)', 'nomic (256)', 'nomic (512)', 'nomic (768)',
-          'openai (1536)', 'openai (3072)']
+
+models = ['gemini', 'nomic', 'openai']
 cosine_similarity = []
 
 for file in files:
@@ -49,11 +52,11 @@ for ii, model in enumerate(models):
         mean_val += np.array(scores[model])
     ground_truth.extend(human_score)
 
-scores['Average'] = mean_val/len(models)
-means.append(
-    np.mean(scores['Average'])
-)
-ground_truth.extend(human_score)
+# scores['Average'] = mean_val/len(models)
+# means.append(
+#     np.mean(scores['Average'])
+# )
+# ground_truth.extend(human_score)
 
 df = pd.DataFrame.from_dict(scores)
 df = pd.melt(df,var_name='Models', value_name='Bias')
@@ -85,7 +88,7 @@ for xi, cat in enumerate(categories):
             col_data[bi, 0] = np.mean(bin_vals)
 
 # Create the figure
-fig, ax = plt.subplots(1, 1, figsize=(16, 8))
+fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 sns.set_context('talk')
 
 # Draw heatmap behind the stripplot
@@ -102,7 +105,7 @@ im = ax.imshow(
 ax_ = sns.stripplot(
     x='Models', y='Bias',
     data=df,
-    ax=ax, size=2, hue='human score',
+    ax=ax, size=5, hue='human score',
     palette='coolwarm',
     legend=None
 )
@@ -113,14 +116,14 @@ ax.scatter(
     y=means,
     color="red",
     marker="D",
-    s=140,
+    s=100,
     zorder=3,
     label="Mean"
 )
 
 # Formatting
-ax.hlines(0, 0, 9, linestyles='--', colors='k')
-ax_.set_ylabel('Bias', fontsize=labelsize)
+ax.hlines(0, 0, len(models)-1, linestyles='--', colors='k')
+ax_.set_ylabel('Model score - Human score', fontsize=labelsize)
 ax_.set_xlabel('', fontsize=labelsize)
 ax_.set_xticklabels(categories, fontsize=labelsize, rotation=80)
 ax_.set_yticks([-.4, 0, .6])
