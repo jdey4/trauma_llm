@@ -22,7 +22,7 @@ from matplotlib.colors import LinearSegmentedColormap
 #          'openai_text-embedding-3-large.pickle']
 
 files = ['gemini_text-gemini-embedding-001_dim_3072.pickle',
-         'nomic_text-nomic-embed-text-v1.5_768.pickle',
+         'nomic_text-nomic-embed-text-v2-moe_768.pickle',
          'openai_text-embedding-3-large.pickle',
          'pubmedbert-base-embeddings_768.pickle']
 
@@ -106,7 +106,7 @@ im = ax.imshow(
 ax_ = sns.stripplot(
     x='Models', y='Bias',
     data=df,
-    ax=ax, size=2, hue='human score',
+    ax=ax, size=5, hue='human score',
     palette='coolwarm',
     legend=None
 )
