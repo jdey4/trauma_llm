@@ -134,7 +134,7 @@ for kk in range(3):
     ax_.set_ylabel('Model score - Human score', fontsize=labelsize-4)
     ax_.set_xlabel('', fontsize=labelsize)
     ax_.set_xticklabels(categories, fontsize=labelsize, rotation=80)
-    ax_.set_yticks([-.4, 0, .6])
+    ax_.set_yticks([-1, 0, .6])
     ax_.tick_params(labelsize=ticksize)
     ax_.spines["right"].set_visible(False)
     ax_.spines["top"].set_visible(False)
