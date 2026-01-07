@@ -52,12 +52,17 @@ for kk in range(3):
     
     scores = {}
     means = []
+    var = []
     ground_truth = []
     for ii, model in enumerate(models):
         scores[model] = cosine_similarity[ii] - human_score
         means.append(
             np.mean(scores[model])
         )
+        var.append(
+            np.std(scores[model], ddof=1)
+        )
+
         if ii==0:
             mean_val = np.array(scores[model])
         else:
@@ -113,20 +118,52 @@ for kk in range(3):
         x='Models', y='Bias',
         data=df,
         ax=ax[kk], size=5, hue='human score',
-        palette='coolwarm',
+        palette='coolwarm', alpha=.5,
         legend=None
     )
 
-    # Mean markers
-    ax[kk].scatter(
-        x=np.arange(len(means)),
-        y=means,
-        color="red",
-        marker="D",
-        s=100,
-        zorder=3,
-        label="Mean"
-    )
+    if kk==0:
+        # Mean markers
+        ax[kk].scatter(
+            x=np.arange(len(means)),
+            y=means,
+            color="red",
+            marker="D",
+            s=100,
+            zorder=3,
+            label="Mean"
+        )
+
+        # std markers
+        ax[kk].scatter(
+            x=np.arange(len(var)),
+            y=var,
+            color="black",
+            marker="D",
+            s=100,
+            zorder=3,
+            label="STD"
+        )
+    else:
+            # Mean markers
+        ax[kk].scatter(
+            x=np.arange(len(means)),
+            y=means,
+            color="red",
+            marker="D",
+            s=100,
+            zorder=3
+        )
+
+        # std markers
+        ax[kk].scatter(
+            x=np.arange(len(var)),
+            y=var,
+            color="black",
+            marker="D",
+            s=100,
+            zorder=3
+        )
 
     # Formatting
     ax[kk].hlines(0, 0, len(models)-1, linestyles='--', colors='k')
@@ -143,6 +180,10 @@ for kk in range(3):
     if kk==2:
         cbar = plt.colorbar(im, ax=ax[kk])
         cbar.set_label('Human Score', fontsize=labelsize)
+    
+fig.legend(loc='upper center', bbox_to_anchor=(0.5,0.0), fontsize=labelsize, ncol=2, frameon=False)
+
+plt.tight_layout()
 
 plt.savefig('plots/embedding_bias_with_heatmap_combined.pdf')
 
