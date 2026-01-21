@@ -12,11 +12,11 @@ rcParams.update({'figure.autolayout': False})
 sns.set_context('talk')
 
 # ---------------- Figure setup ----------------
-fig, ax = plt.subplots(1, 3, figsize=(22, 8), sharey=True)
+fig, ax = plt.subplots(1, 4, figsize=(27, 8), sharey=True)
 ticksize = 30
 labelsize = 30
 
-titles = ['STSB', 'Biosses', 'Trauma']
+titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non expert)']
 models = ['gemini', 'nomic', 'openai', 'pubmedbert']
 
 files = {
@@ -37,6 +37,12 @@ files = {
         'trauma/nomic_text-nomic-embed-text-v2-moe_768.pickle',
         'trauma/openai_text-embedding-3-large.pickle',
         'trauma/pubmedbert-base-embeddings_768.pickle'
+    ],
+    3: [
+        'trauma/gemini_text-gemini-embedding-001_dim_768_non_expert.pickle',
+        'trauma/nomic_text-nomic-embed-text-v2-moe_768_non_expert.pickle',
+        'trauma/openai_text-embedding-3-large_non_expert.pickle',
+        'trauma/pubmedbert-base-embeddings_768_non_expert.pickle'
     ]
 }
 
@@ -45,7 +51,7 @@ global_human_min = np.inf
 global_human_max = -np.inf
 
 # ---------------- Main loop ----------------
-for kk in range(3):
+for kk in range(4):
     cosine_similarity = []
     human_score = None
 
