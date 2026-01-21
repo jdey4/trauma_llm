@@ -156,6 +156,6 @@ cbar.ax.tick_params(labelsize=ticksize)
 # )
 
 plt.subplots_adjust(left=0.06, right=0.9, bottom=0.18, top=0.88, wspace=0.25)
-plt.savefig('plots/embedding_bias_with_anova.pdf')
+plt.savefig('plots/embedding_bias_with_anova.pdf', bbox_inches='tight')
 plt.show()
 #%%
