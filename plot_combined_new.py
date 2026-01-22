@@ -16,7 +16,7 @@ fig, ax = plt.subplots(1, 4, figsize=(27, 8), sharey=True)
 ticksize = 30
 labelsize = 30
 
-titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non expert)']
+titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non-expert)']
 models = ['gemini', 'nomic', 'openai', 'pubmedbert']
 
 files = {
