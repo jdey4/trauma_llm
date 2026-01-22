@@ -111,12 +111,12 @@ for kk in range(4):
     ax[kk].errorbar(
         xpos, means, yerr=stds,
         fmt='D',
-        color='red',
+        color='black',
         ecolor='black',
         elinewidth=3,
         capsize=10,
         capthick=3,
-        markersize=8,
+        markersize=12,
         zorder=5,
         label='Mean ± STD' if kk == 0 else None
     )
@@ -124,7 +124,7 @@ for kk in range(4):
     # -------- Formatting --------
     ax[kk].axhline(0, linestyle='--', color='k', linewidth=1.5)
     ax[kk].set_title(
-        f"{titles[kk]}\nOne-way ANOVA: {p_text}",
+        f"{titles[kk]}",
         fontsize=labelsize
     )
     ax_.set_xlabel('')
