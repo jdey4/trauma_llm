@@ -6,38 +6,24 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import seaborn as sns
 import matplotlib as mpl
-from scipy.stats import f_oneway, ttest_rel
+from scipy.stats import ttest_rel
 from itertools import combinations
 
 rcParams.update({'figure.autolayout': False})
 sns.set_context('talk')
 
-# ====== USER TOGGLES ======
-ALPHA = 0.05
-SHOW_NS = True          # <- set True if you want a bracket even when not significant
-Q_TOP = 0.99             # <- bracket is placed above this quantile of the dots
-BRACKET_PAD = 0.03       # <- extra space above the dots (data units)
-BRACKET_H = 0.05         # <- bracket height (data units)
-YLIM_PAD = 0.06          # <- extra headroom to avoid clipping
-
-# ---------------- Helper: significance bracket ----------------
-def add_sig_bracket(ax, x1, x2, y, h, text, lw=2, fs=28):
-    ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=lw, c='k', clip_on=False)
-    ax.text((x1 + x2) / 2, y + h, text, ha='center', va='bottom', fontsize=fs, clip_on=False)
-
-def stars_from_p(p):
-    if p < 1e-4: return '****'
-    if p < 1e-3: return '***'
-    if p < 1e-2: return '**'
-    return '*'
-
-# ---------------- Figure setup ----------------
-fig, ax = plt.subplots(1, 4, figsize=(27, 8), sharey=True)
-ticksize = 30
-labelsize = 30
-
-titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non-expert)']
+# ===================== SETTINGS =====================
+alpha = 0.05
 models = ['gemini', 'nomic', 'openai', 'pubmedbert']
+titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non-expert)']
+
+# Bracket aesthetics (thin + nested)
+BR_LW = 1.0          # thin bracket line
+BR_H = 0.03          # bracket corner height (data units)
+BASE_PAD = 0.06      # padding above top of dot cloud (data units)
+TIER_GAP = 0.085     # vertical gap between nested brackets (data units)
+STAR_FS = 18         # star font size
+Q_TOP = 0.99         # use 99th percentile of dots to anchor brackets (avoids outliers)
 
 files = {
     0: [
@@ -66,15 +52,43 @@ files = {
     ]
 }
 
-# Track human score range for global colorbar
+# ===================== HELPERS =====================
+def stars_from_p(p):
+    # Stars based on RAW p-value (standard), but bracket is drawn only if Bonferroni significant.
+    if p < 1e-4:
+        return '****'
+    if p < 1e-3:
+        return '***'
+    if p < 1e-2:
+        return '**'
+    return '*'
+
+def add_sig_bracket_onbar(ax, x1, x2, y, h, text, lw=1.0, fs=18):
+    """
+    Draw a bracket between categories x1 and x2.
+    Put stars ON the horizontal bar (centered).
+    """
+    ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=lw, c='k', clip_on=False)
+    ax.text(
+        (x1 + x2) / 2,
+        y + h,                 # on the bar
+        text,
+        ha='center',
+        va='center',
+        fontsize=fs,
+        clip_on=False,
+        bbox=dict(facecolor='white', edgecolor='none', pad=0.15)
+    )
+
+# ===================== FIGURE SETUP =====================
+fig, ax = plt.subplots(1, 4, figsize=(27, 8), sharey=True)
+ticksize = 30
+labelsize = 30
+
 global_human_min = np.inf
 global_human_max = -np.inf
 
-pairs = list(combinations(range(len(models)), 2))  # 6 pairs
-m_tests = len(pairs)
-alpha_corr = ALPHA / m_tests
-
-# ---------------- Main loop ----------------
+# ===================== MAIN LOOP =====================
 for kk in range(4):
     cosine_similarity = []
     human_score = None
@@ -87,13 +101,12 @@ for kk in range(4):
         if human_score is None:
             human_score = np.array(data['Human score'])
 
-    global_human_min = min(global_human_min, human_score.min())
-    global_human_max = max(global_human_max, human_score.max())
+    global_human_min = min(global_human_min, float(human_score.min()))
+    global_human_max = max(global_human_max, float(human_score.max()))
 
     # -------- Bias per model --------
     scores = {}
-    means = []
-    stds = []
+    means, stds = [], []
     ground_truth = []
 
     for ii, model in enumerate(models):
@@ -131,47 +144,61 @@ for kk in range(4):
         fmt='D',
         color='black',
         ecolor='black',
-        elinewidth=3,
-        capsize=10,
-        capthick=3,
-        markersize=12,
+        elinewidth=2,
+        capsize=8,
+        capthick=2,
+        markersize=10,
         zorder=5
     )
 
-    # -------- Pairwise paired t-tests + Bonferroni --------
-    pair_pvals = {}
+    # ==========================================================
+    # Pairwise paired t-tests (6) + Bonferroni, nested brackets:
+    # largest span first, then progressively smaller below.
+    # ==========================================================
+    pairs = list(combinations(range(len(models)), 2))
+    alpha_corr = alpha / len(pairs)
+
+    sig_pairs = []
     for i, j in pairs:
-        t_stat, p = ttest_rel(scores[models[i]], scores[models[j]])
-        pair_pvals[(i, j)] = p
+        t_stat, p = ttest_rel(scores[models[i]], scores[models[j]])  # paired
+        if p < alpha_corr:
+            sig_pairs.append((i, j, p))
 
-    # Best & second best = mean bias closest to 0
-    order_best = np.argsort(np.abs(means))
-    best_idx = int(order_best[0])
-    second_best_idx = int(order_best[1])
-    i, j = sorted([best_idx, second_best_idx])
+    # Sort by span (largest first). Tie-break: smaller p first (more significant).
+    sig_pairs.sort(key=lambda t: ((t[1] - t[0]), -np.log10(t[2])), reverse=True)
 
-    p_raw = pair_pvals[(i, j)]
-    is_sig = (p_raw < alpha_corr)
+    # Anchor bracket block above top of the dot clouds (quantile-based, robust)
+    top_cloud = max(np.quantile(scores[m], Q_TOP) for m in models)
+    y_top = top_cloud + BASE_PAD
 
-    # -------- Bracket position: above the DOT CLOUDS (quantile-based) --------
-    if is_sig or SHOW_NS:
-        # compute top of the plotted distributions for these two groups
-        top_i = np.quantile(scores[models[i]], Q_TOP)
-        top_j = np.quantile(scores[models[j]], Q_TOP)
-        y_base = max(top_i, top_j) + BRACKET_PAD
+    # Draw nested: largest bracket at the top, smaller ones gradually below
+    # That means we decrease y as we go down the list.
+    for idx, (i, j, p) in enumerate(sig_pairs):
+        y = y_top - idx * TIER_GAP
+        # Safety: if nesting would dip too low into dots, instead stack upward
+        if y < top_cloud + 0.02:
+            y = y_top + idx * TIER_GAP
 
-        text = stars_from_p(p_raw) if is_sig else "n.s."
-        add_sig_bracket(ax[kk], i, j, y_base, BRACKET_H, text)
+        add_sig_bracket_onbar(
+            ax=ax[kk],
+            x1=i,
+            x2=j,
+            y=y,
+            h=BR_H,
+            text=stars_from_p(p),
+            lw=BR_LW,
+            fs=STAR_FS
+        )
 
-        # ensure not clipped
+    # Ensure brackets aren't clipped above
+    if len(sig_pairs) > 0:
         ymin, ymax = ax[kk].get_ylim()
-        needed_top = y_base + BRACKET_H + YLIM_PAD
-        if needed_top > ymax:
-            ax[kk].set_ylim(ymin, needed_top)
+        needed_top = max(y_top + BR_H + 0.08, ymax)
+        ax[kk].set_ylim(ymin, needed_top)
 
     # -------- Formatting --------
     ax[kk].axhline(0, linestyle='--', color='k', linewidth=1.5)
-    ax[kk].set_title(f"{titles[kk]}", fontsize=labelsize)
+    ax[kk].set_title(titles[kk], fontsize=labelsize)
     ax_.set_xlabel('')
     ax_.set_xticklabels(models, fontsize=labelsize, rotation=80)
     ax_.set_yticks([-1, 0, 0.6])
@@ -192,6 +219,6 @@ cbar.set_label('Human Score', fontsize=labelsize)
 cbar.ax.tick_params(labelsize=ticksize)
 
 plt.subplots_adjust(left=0.06, right=0.9, bottom=0.18, top=0.88, wspace=0.25)
-plt.savefig('plots/embedding_bias_pairwise_paired_bonferroni_best_vs_second_quantile_bracket.pdf', bbox_inches='tight')
+plt.savefig('plots/embedding_bias_pairwise_paired_bonferroni_nested.pdf', bbox_inches='tight')
 plt.show()
 #%%
