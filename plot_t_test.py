@@ -15,7 +15,7 @@ sns.set_context('talk')
 # ===================== SETTINGS =====================
 alpha = 0.05
 models = ['gemini', 'nomic', 'openai', 'pubmedbert']
-titles = ['STSB', 'Biosses', 'Trauma (expert)', 'Trauma (non-expert)']
+titles = ['General', 'Bio-specific', 'Trauma (expert)', 'Trauma (non-expert)']
 
 # Bracket aesthetics (thin + nested)
 BR_LW = 1.0          # thin bracket line
