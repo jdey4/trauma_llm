@@ -185,7 +185,7 @@ def fit_mds_range(
     min_components: int = 1,
     max_components: int = 50,
     random_state: int = 42,
-    normalize_before_mds: bool = True,
+    normalize_before_mds: bool = False,
 ) -> Tuple[pd.DataFrame, dict]:
     """
     Run metric MDS across a range of target dimensions.
@@ -296,7 +296,7 @@ def save_stress_plot(
         ticks = list(range(1, max_k + 1, 5))
     else:
         ticks = list(range(1, max_k + 1, 5))  
-    
+
     ax.set_xticks(ticks)
 
     plt.tight_layout()
