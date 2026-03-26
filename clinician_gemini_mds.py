@@ -8,7 +8,7 @@ What this script does
 2. Extracts all columns whose names begin with:
        "How would you personally respond to this case?"
 3. Reshapes them into a long table: one row per (clinician, case).
-4. Loads GOOGLE_API_KEY automatically from a .env file.
+4. Loads GOOGLE API key automatically from a .env file.
 5. Calls Gemini embeddings ("gemini-embedding-001") on each clinician response.
 6. Runs metric MDS for a wide range of embedding dimensions.
 7. Plots stress vs. number of MDS components.
@@ -20,14 +20,14 @@ Requirements
 ------------
 pip install pandas numpy matplotlib seaborn scikit-learn openpyxl google-genai python-dotenv
 """
-#%%
+
 from __future__ import annotations
 
 import argparse
 import os
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import numpy as np
 import pandas as pd
@@ -36,6 +36,7 @@ import seaborn as sns
 
 from sklearn.manifold import MDS
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics.pairwise import cosine_distances
 from dotenv import load_dotenv
 
 try:
@@ -46,14 +47,13 @@ except ImportError as e:
     ) from e
 
 
+# Load .env once at startup
 load_dotenv()
-#%%
+
 RESPONSE_PREFIX = "How would you personally respond to this case?"
 YEARS_COL = "How many years of experience do you have in your field?"
 SPECIALTY_COL = "What is your medical specialty?"
 NAME_COLS = ["First name", "Last name"]
-
-# Force consistent hue handling for all 17 cases
 TOTAL_CASES = 17
 
 
@@ -106,11 +106,19 @@ def load_clinician_responses(
 
 
 def make_genai_client(api_key: str | None = None):
-    api_key = api_key or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
+    """
+    Create Gemini client using .env or shell environment.
+    Tries both GOOGLE_GENERATIVE_AI_API_KEY and GOOGLE_API_KEY.
+    """
+    api_key = (
+        api_key
+        or os.environ.get("GOOGLE_GENERATIVE_AI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
 
     if not api_key:
         raise EnvironmentError(
-            "GOOGLE_API_KEY not found. Put it in your .env file or export it in the environment."
+            "No Gemini API key found. Put GOOGLE_GENERATIVE_AI_API_KEY or GOOGLE_API_KEY in your .env file."
         )
 
     return genai.Client(api_key=api_key)
@@ -146,7 +154,10 @@ def get_gemini_embedding(
             last_err = e
             if attempt == max_retries - 1:
                 break
-            print(f"Embedding failed on attempt {attempt + 1}/{max_retries}. Retrying in {sleep_s:.1f}s...")
+            print(
+                f"Embedding failed on attempt {attempt + 1}/{max_retries}. "
+                f"Retrying in {sleep_s:.1f}s..."
+            )
             time.sleep(sleep_s)
             sleep_s *= 2.0
 
@@ -186,18 +197,24 @@ def fit_mds_range(
     max_components: int = 50,
     random_state: int = 42,
     normalize_before_mds: bool = False,
-) -> Tuple[pd.DataFrame, dict]:
+    distance_metric: str = "cosine",   # "cosine" or "euclidean"
+) -> Tuple[pd.DataFrame, Dict[int, np.ndarray]]:
     """
     Run metric MDS across a range of target dimensions.
+
+    For cosine MDS, computes pairwise cosine distance matrix first and then
+    uses MDS with dissimilarity="precomputed".
 
     Returns:
         stress_df with columns [n_components, stress]
         projections dict: k -> projected array of shape (n_samples, k)
     """
-    if normalize_before_mds:
-        X = StandardScaler().fit_transform(X)
+    X_work = X.copy()
 
-    max_allowed = min(X.shape[0] - 1, X.shape[1])
+    if normalize_before_mds:
+        X_work = StandardScaler().fit_transform(X_work)
+
+    max_allowed = min(X_work.shape[0] - 1, X_work.shape[1])
     max_components = min(max_components, max_allowed)
 
     if max_components < min_components:
@@ -205,8 +222,17 @@ def fit_mds_range(
 
     print(f"Requested MDS sweep up to {max_components} dimensions (max allowed = {max_allowed})")
 
+    if distance_metric == "euclidean":
+        mds_input = X_work
+        dissimilarity_mode = "euclidean"
+    elif distance_metric == "cosine":
+        mds_input = cosine_distances(X_work)
+        dissimilarity_mode = "precomputed"
+    else:
+        raise ValueError("distance_metric must be either 'euclidean' or 'cosine'.")
+
     stress_rows = []
-    projections = {}
+    projections: Dict[int, np.ndarray] = {}
 
     for k in range(min_components, max_components + 1):
         mds = MDS(
@@ -215,11 +241,11 @@ def fit_mds_range(
             n_init=4,
             max_iter=300,
             eps=1e-6,
-            dissimilarity="euclidean",
+            dissimilarity=dissimilarity_mode,
             normalized_stress="auto",
             random_state=random_state,
         )
-        X_proj = mds.fit_transform(X)
+        X_proj = mds.fit_transform(mds_input)
         stress_rows.append({"n_components": k, "stress": float(mds.stress_)})
         projections[k] = X_proj
         print(f"Finished MDS for k={k}, stress={mds.stress_:.4f}")
@@ -273,7 +299,6 @@ def save_stress_plot(
         marker="o",
     )
 
-    # Highlight elbow
     ax.axvline(optimal_k, linestyle="--", linewidth=1.2)
     ax.scatter(
         [optimal_k],
@@ -286,22 +311,25 @@ def save_stress_plot(
     ax.set_xlabel("Number of MDS components")
     ax.set_ylabel("Stress")
 
-    # -------- KEY FIX --------
-    # Sparse tick labeling (adaptive)
-    max_k = stress_df["n_components"].max()
+    max_k = int(stress_df["n_components"].max())
 
     if max_k <= 20:
-        ticks = list(range(1, max_k + 1, 5))
+        ticks = list(range(1, max_k + 1, 2))
     elif max_k <= 50:
         ticks = list(range(1, max_k + 1, 5))
     else:
-        ticks = list(range(1, max_k + 1, 5))  
+        ticks = list(range(1, max_k + 1, 10))
+
+    if optimal_k not in ticks:
+        ticks.append(optimal_k)
+        ticks = sorted(set(ticks))
 
     ax.set_xticks(ticks)
 
     plt.tight_layout()
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
     plt.close()
+
 
 def save_pairplot(
     projected_df: pd.DataFrame,
@@ -311,7 +339,7 @@ def save_pairplot(
 ) -> None:
     """
     Create pairplot of projected MDS dimensions with consistent coloring
-    across all 17 cases.
+    across all cases.
     """
     sns.set_context("talk")
 
@@ -323,12 +351,12 @@ def save_pairplot(
 
     if "case_num" in df_plot.columns:
         hue_col = "case_num"
-
-        # Force all 17 cases into the categorical order, even if some are missing
         hue_order = list(range(1, total_cases + 1))
-        df_plot[hue_col] = pd.Categorical(df_plot[hue_col], categories=hue_order, ordered=True)
-
-        # Enough distinct colors for 17 classes
+        df_plot[hue_col] = pd.Categorical(
+            df_plot[hue_col],
+            categories=hue_order,
+            ordered=True
+        )
         palette = sns.color_palette("husl", n_colors=total_cases)
 
     cols = dims_to_plot.copy()
@@ -404,6 +432,18 @@ def main():
         default=17,
         help="Total number of cases for consistent color coding",
     )
+    parser.add_argument(
+        "--normalize_before_mds",
+        action="store_true",
+        help="If set, standardize embeddings before MDS. Off by default.",
+    )
+    parser.add_argument(
+        "--distance_metric",
+        type=str,
+        default="cosine",
+        choices=["cosine", "euclidean"],
+        help="Distance metric used by MDS.",
+    )
     args = parser.parse_args()
 
     outdir = Path(args.outdir)
@@ -435,7 +475,8 @@ def main():
         min_components=1,
         max_components=args.max_components,
         random_state=42,
-        normalize_before_mds=True,
+        normalize_before_mds=args.normalize_before_mds,
+        distance_metric=args.distance_metric,
     )
     stress_df.to_csv(outdir / "mds_stress_by_components.csv", index=False)
 
