@@ -291,16 +291,12 @@ def save_stress_plot(
     max_k = stress_df["n_components"].max()
 
     if max_k <= 20:
-        ticks = list(range(1, max_k + 1))
+        ticks = list(range(1, max_k + 1, 5))
     elif max_k <= 50:
-        ticks = list(range(1, max_k + 1, 2))   # every 2
+        ticks = list(range(1, max_k + 1, 5))
     else:
-        ticks = list(range(1, max_k + 1, 5))   # every 5
-
-    # Always include important anchors
-    anchors = [1, 2, 3, 5, 10, optimal_k]
-    ticks = sorted(set(ticks + [t for t in anchors if t <= max_k]))
-
+        ticks = list(range(1, max_k + 1, 5))  
+    
     ax.set_xticks(ticks)
 
     plt.tight_layout()
@@ -399,7 +395,7 @@ def main():
     parser.add_argument(
         "--pairplot_max_dims",
         type=int,
-        default=5,
+        default=10,
         help="Cap pairplot dims for readability",
     )
     parser.add_argument(
