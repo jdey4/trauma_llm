@@ -741,3 +741,126 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#%%
+import pandas as pd
+import numpy as np
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+
+# ----------------------------
+# Load saved MDS results
+# ----------------------------
+df = pd.read_json("compare_outputs/combined_with_mds.json")
+
+# ----------------------------
+# Keep ONLY clinicians
+# ----------------------------
+df = df[df["model_name"] == "Clinician"].copy()
+
+# ----------------------------
+# Compute response length
+# ----------------------------
+df["resp_len"] = df["response_text"].astype(str).str.strip().str.len()
+
+# ----------------------------
+# Define bins
+# ----------------------------
+bins = [0, 20, 100, 200, 500, 1000]
+labels = ["0-20", "20-100", "100-200", "200-500", "500-1000"]
+
+df["len_bin"] = pd.cut(
+    df["resp_len"],
+    bins=bins,
+    labels=labels,
+    include_lowest=True,
+    right=True,
+)
+
+# Remove anything outside bins
+df = df[df["len_bin"].notna()].copy()
+
+# ----------------------------
+# Features (k=6 MDS)
+# ----------------------------
+mds_cols = ["MDS1", "MDS2", "MDS3", "MDS4", "MDS5", "MDS6"]
+df = df.dropna(subset=mds_cols)
+
+X = df[mds_cols].values
+y = df["len_bin"].values
+
+print("Class distribution:")
+print(df["len_bin"].value_counts())
+
+# ----------------------------
+# Train-test split
+# ----------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.25,
+    random_state=42,
+    stratify=y
+)
+
+# ----------------------------
+# Train Random Forest
+# ----------------------------
+clf = RandomForestClassifier(
+    n_estimators=300,
+    random_state=42,
+    n_jobs=-1
+)
+
+clf.fit(X_train, y_train)
+
+# ----------------------------
+# Evaluate
+# ----------------------------
+y_pred = clf.predict(X_test)
+
+acc = accuracy_score(y_test, y_pred)
+
+print("\n=== Length Classification (Experts Only) ===")
+print(f"Accuracy: {acc:.4f}\n")
+
+print("Classification report:")
+print(classification_report(y_test, y_pred))
+# %%
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ----------------------------
+# Feature importance
+# ----------------------------
+importances = clf.feature_importances_
+std = np.std([tree.feature_importances_ for tree in clf.estimators_], axis=0)
+
+# Sort features by importance
+indices = np.argsort(importances)[::-1]
+sorted_features = [mds_cols[i] for i in indices]
+
+print("\n=== Feature Importance ===")
+for i in indices:
+    print(f"{mds_cols[i]}: {importances[i]:.4f}")
+
+# ----------------------------
+# Plot
+# ----------------------------
+plt.figure(figsize=(7,5))
+
+plt.bar(
+    range(len(importances)),
+    importances[indices],
+    yerr=std[indices],
+)
+
+plt.xticks(range(len(importances)), sorted_features)
+plt.ylabel("Importance")
+plt.title("Feature Importance (MDS dimensions → response length)")
+
+plt.tight_layout()
+plt.savefig("compare_outputs/length_feature_importance.png", dpi=300)
+plt.show()
+# %%
