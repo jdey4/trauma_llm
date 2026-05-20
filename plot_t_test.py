@@ -14,7 +14,7 @@ sns.set_context('talk')
 
 # ===================== SETTINGS =====================
 alpha = 0.05
-models = ['gemini', 'nomic', 'openai', 'pubmedbert']
+models = ['gemini', 'nomic', 'openai', 'pubmedbert', 'snowflake']
 titles = ['General', 'Bio-specific', 'Trauma (expert)', 'Trauma (non-expert)']
 
 # Bracket aesthetics (thin + nested)
@@ -30,25 +30,29 @@ files = {
         'stsb/gemini_text-gemini-embedding-001_dim_3072.pickle',
         'stsb/nomic_text-nomic-embed-text-v2-moe_768.pickle',
         'stsb/openai_text-embedding-3-large.pickle',
-        'stsb/pubmedbert-base-embeddings_768.pickle'
+        'stsb/pubmedbert-base-embeddings_768.pickle',
+        'stsb/snowflake_text-snowflake-arctic-embed-l-v2.0_768.pickle'
     ],
     1: [
         'biosses/gemini_text-gemini-embedding-001_dim_3072.pickle',
         'biosses/nomic_text-nomic-embed-text-v2-moe_768.pickle',
         'biosses/openai_text-embedding-3-large.pickle',
-        'biosses/pubmedbert-base-embeddings_768.pickle'
+        'biosses/pubmedbert-base-embeddings_768.pickle',
+        'biosses/snowflake_text-snowflake-arctic-embed-l-v2.0_768.pickle'
     ],
     2: [
         'trauma/gemini_text-gemini-embedding-001_dim_768.pickle',
         'trauma/nomic_text-nomic-embed-text-v2-moe_768.pickle',
         'trauma/openai_text-embedding-3-large.pickle',
-        'trauma/pubmedbert-base-embeddings_768.pickle'
+        'trauma/pubmedbert-base-embeddings_768.pickle',
+        'trauma/snowflake_text-snowflake-arctic-embed-l-v2.0_768.pickle'
     ],
     3: [
         'trauma/gemini_text-gemini-embedding-001_dim_768_non_expert.pickle',
         'trauma/nomic_text-nomic-embed-text-v2-moe_768_non_expert.pickle',
         'trauma/openai_text-embedding-3-large_non_expert.pickle',
-        'trauma/pubmedbert-base-embeddings_768_non_expert.pickle'
+        'trauma/pubmedbert-base-embeddings_768_non_expert.pickle',
+        'trauma/snowflake_text-snowflake-arctic-embed-l-v2.0_768_non_expert.pickle'
     ]
 }
 
