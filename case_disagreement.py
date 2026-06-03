@@ -275,7 +275,7 @@ def plot_disagreement_heatmap(model_scores, expert_scores, outpath):
         zip(expert_scores["case_num"], expert_scores["avg_pairwise_cosine_distance"])
     )
 
-    heatmap_df = pd.DataFrame(
+    raw_df = pd.DataFrame(
         [
             [model_map.get(c, np.nan) for c in all_cases],
             [expert_map.get(c, np.nan) for c in all_cases],
@@ -284,37 +284,57 @@ def plot_disagreement_heatmap(model_scores, expert_scores, outpath):
         columns=[f"Case {c}" for c in all_cases],
     )
 
-    sns.set_context("talk")
+    # Row-wise min-max normalization for color only
+    norm_df = raw_df.copy()
+    for idx in norm_df.index:
+        row = norm_df.loc[idx].astype(float)
+        row_min = row.min()
+        row_max = row.max()
 
-    plt.figure(figsize=(18, 4.2))
+        if row_max > row_min:
+            norm_df.loc[idx] = (row - row_min) / (row_max - row_min)
+        else:
+            norm_df.loc[idx] = 0.0
+
+    sns.set_context("talk")
+    plt.figure(figsize=(18, 4.8))
 
     ax = sns.heatmap(
-        heatmap_df,
+        norm_df,
         cmap="YlOrRd",
-        annot=False,          # no numbers inside blocks
+        annot=raw_df,          # show actual raw cosine distances
+        fmt=".2f",
         linewidths=1,
         linecolor="white",
         cbar_kws={
-            "label": "Average pairwise \n cosine distance",
-            "shrink": 0.9,
-            "pad": 0.02,
+            "label": "Row-normalized disagreement",
+            "shrink": 0.75,
+            "pad": 0.03,
         },
+        vmin=0,
+        vmax=1,
     )
 
-    ax.set_title("Case-level response embedding disagreement", pad=18)
+    ax.set_title(
+        "Case-level response embedding disagreement\n"
+        "Color = row-normalized disagreement; numbers = raw average pairwise cosine distance",
+        pad=20,
+    )
+
     ax.set_xlabel("")
     ax.set_ylabel("")
 
     plt.xticks(rotation=45, ha="right")
     plt.yticks(rotation=0)
 
-    # Make room for full colorbar label on right
-    plt.subplots_adjust(right=0.88, bottom=0.32, left=0.16, top=0.82)
+    # Make right-side colorbar label fully visible
+    plt.subplots_adjust(left=0.16, right=0.86, bottom=0.32, top=0.78)
 
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
     plt.close()
 
-    return heatmap_df
+    return raw_df, norm_df
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -380,7 +400,14 @@ def main():
         outpath=outdir / "case_disagreement_heatmap.png",
     )
 
-    heatmap_df.to_csv(outdir / "case_disagreement_heatmap_values.csv")
+    raw_heatmap_df, norm_heatmap_df = plot_disagreement_heatmap(
+        model_scores=model_scores,
+        expert_scores=expert_scores,
+        outpath=outdir / "case_disagreement_heatmap_normalized_with_raw_values.png",
+    )
+
+    raw_heatmap_df.to_csv(outdir / "case_disagreement_raw_values.csv")
+    norm_heatmap_df.to_csv(outdir / "case_disagreement_row_normalized_values.csv")
 
     print("\nDone.")
     print(f"Saved outputs to: {outdir.resolve()}")
